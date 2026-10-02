@@ -40,7 +40,7 @@ def main():
     source = (ROOT / "build/enemy_hp.lua").read_text()
     original = ORIGINAL.read_text()
     compile_lua = lua.eval("function(s) local f,e=loadstring(s); assert(f,e); return true end")
-    for path in [ROOT / "build/enemy_hp.lua", ROOT / "src/presentation.lua"]:
+    for path in [ROOT / "build/enemy_hp.lua", *sorted((ROOT / "src").glob("*.lua"))]:
         assert compile_lua(path.read_text())
     print("PASS: generated script and renderer compile under Lua 5.1")
     # Check exact preservation of game-reading functions and version guard.
@@ -61,6 +61,15 @@ def main():
     lua.globals().MAKE_PRESENTATION = factory
     lifecycle = (ROOT / "tests/lifecycle.lua").read_text()
     print(lua.execute(lifecycle.replace("--[[TARGET_CONTROLLER]]", ring).replace("--[[UPDATE_CONTROLLER]]", tick)))
+    reader_factory = lua.execute((ROOT / "src/damage_reader.lua").read_text())
+    detector_factory = lua.execute((ROOT / "src/damage_detector.lua").read_text())
+    print(lua.execute((ROOT / "tests/damage_reader.lua").read_text())(reader_factory))
+    print(lua.execute((ROOT / "tests/damage.lua").read_text())(detector_factory))
+    lua.globals().MAKE_DAMAGE_DETECTOR = detector_factory
+    damage_lifecycle = (ROOT / "tests/damage_lifecycle.lua").read_text()
+    print(lua.execute(damage_lifecycle.replace("--[[TARGET_CONTROLLER]]", ring)
+                      .replace("--[[DAMAGE_CONTROLLER]]", (ROOT / "src/damage_target.lua").read_text())
+                      .replace("--[[UPDATE_CONTROLLER]]", tick)))
     startup = lua.execute((ROOT / "tests/startup.lua").read_text())
     hud = (ROOT / "unpacked/hud_plus/COMMON/9ba626afa44a3aa3.patch_0/ef0157640928609f.lua").read_text()
     bsl = (ROOT / LOADER["path"]).resolve()

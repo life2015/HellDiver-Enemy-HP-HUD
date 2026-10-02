@@ -8,6 +8,13 @@ local function tick()
 
     local menu = false
     pcall(function() menu = sr.Window.show_cursor() == true end)
+    local okd, ed = pcall(damage_step, now, menu)
+    if not okd then
+        damage_detector:reset()
+        if state.last_damage_error ~= tostring(ed) then
+            state.last_damage_error = tostring(ed); log("damage observer error: " .. tostring(ed))
+        end
+    end
     if not target then hide() return end
     if target.world ~= sr.Application.main_world() then
         target = nil; last_hp = nil; hide(); return
@@ -17,10 +24,11 @@ local function tick()
     -- A killed enemy's ping may disappear before its final HP update. Keep a
     -- short, hidden pending target so that ping removal cannot discard death.
     -- A living cancelled target is hidden immediately and never called a kill.
-    if not target.dead_t and now > target.until_t and not target.mark_lost_at then
+    local damage_expired = target.source == "damage" and now > target.until_t
+    if not target.dead_t and target.source ~= "damage" and now > target.until_t and not target.mark_lost_at then
         target.mark_lost_at = now
     end
-    if not target.dead_t and (state.frames % 12 == 0 or not last_hp or target.mark_lost_at) then
+    if not target.dead_t and (state.frames % 12 == 0 or not last_hp or target.mark_lost_at or damage_expired) then
         local hu = health_units()
         local rec = hu and hu[target.unit]
         if rec and rec.entity == target.entity and rec.hp and rec.hp > 0 then
@@ -31,6 +39,9 @@ local function tick()
             target.death_sx, target.death_sy = target.last_sx, target.last_sy
             log("death entity " .. tostring(target.entity) .. "; animation 1.5s")
         end
+    end
+    if damage_expired and not target.dead_t then
+        target = nil; last_hp = nil; hide(); return
     end
     if not target.dead_t and target.mark_lost_at then
         if now - target.mark_lost_at >= 0.15 then target = nil; last_hp = nil end

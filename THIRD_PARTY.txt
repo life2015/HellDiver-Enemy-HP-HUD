@@ -14,3 +14,10 @@ HUD+ 的完整解包内容仅保存在本地 unpacked/hud_plus/，不包含在�
 etxp / HD2 G-60 Smart Targeting
 Enemy HP 原脚本注明：标记列表结构参考该开源 MIT 项目。
 该逻辑在此 UI 修改版中保持原样。
+
+HD2Runtime / SkyeShade（数据结构研究参考，不是运行时依赖）
+https://github.com/SkyeShade/HD2Runtime/tree/96ab2d258d867a5df4f22bb7b3321d84d28de21d
+ui4 参考 runtime/event_world.lua 和 scripts/research_event_combat.py 核对
+健康记录 +0x38 的伤害归属、+0x19C 的生命状态与本地 peer 读取布局。
+使用本项目独立实现的只读适配器和状态检测，不打包 HD2Runtime 的代码或资源。
+已知轮询/旧归属限制见 README.txt 与 research/DAMAGE_HUD_FEASIBILITY.txt。

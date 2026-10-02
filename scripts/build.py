@@ -17,7 +17,7 @@ RESOURCE_TYPE = 0xA14E8DFA2CD117E2
 GAME_BUILD = "25480438"
 LOADER = json.loads((ROOT / "dependencies.json").read_text())["runtime_dependencies"][0]
 LOADER_REQUIREMENT = f"Bingus Shared Loader v{LOADER['minimum_release']}+ / API {LOADER['api']} with addon discovery"
-RELEASE_NAME = "Enemy-HP-HUD-Style-1.1.2-ui3-BSL15-test.zip"
+RELEASE_NAME = "Enemy-HP-HUD-Style-1.1.2-ui4-BSL15-test.zip"
 
 
 def replace_once(source, old, new):
@@ -29,12 +29,14 @@ def replace_once(source, old, new):
 def patched_source():
     source = original = ORIGINAL.read_text()
     source = replace_once(source, 'local state = rawget(_G, "EnemyHp")\nif state and state.revision == "ehp-1.0" then return end\nlocal REVISION = "ehp-1.1.2"',
-                          'local REVISION = "ehp-1.1.2-ui3-bsl15"\nlocal state = rawget(_G, "EnemyHp")\nif state and state.revision == REVISION then return end')
-    source = replace_once(source, "local OFFSET = -40", "local OFFSET = -40\nlocal UI_SCALE, BAR_WIDTH = 1, 172")
+                          'local REVISION = "ehp-1.1.2-ui4-bsl15"\nlocal state = rawget(_G, "EnemyHp")\nif state and state.revision == REVISION then return end')
+    source = replace_once(source, "local OFFSET = -40", "local OFFSET = -40\nlocal UI_SCALE, BAR_WIDTH = 1, 172\nlocal AUTO_DAMAGE, DAMAGE_DURATION = true, 3")
     source = replace_once(source, 'if k == "offset" and v and v >= -400 and v <= 400 then OFFSET = v end',
                           'if k == "offset" and v and v >= -400 and v <= 400 then OFFSET = v end\n'
                           '        if k == "scale" and v and v >= 0.5 and v <= 2 then UI_SCALE = v end\n'
-                          '        if k == "width" and v and v >= 120 and v <= 320 then BAR_WIDTH = v end')
+                          '        if k == "width" and v and v >= 120 and v <= 320 then BAR_WIDTH = v end\n'
+                          '        if k == "auto_damage" and (v == 0 or v == 1) then AUTO_DAMAGE = v == 1 end\n'
+                          '        if k == "damage_duration" and v and v >= 0.5 and v <= 10 then DAMAGE_DURATION = v end')
     drawing_start = source.index("local ui = { gui = nil")
     font_start = source.index("local function font_ids()", drawing_start)
     font_end = source.index("local function ensure_gui()", font_start)
@@ -58,9 +60,16 @@ def patched_source():
     source = replace_once(source,
                           '    target.marker = marker_of(rec.type)',
                           '    target.world = sr.Application.main_world()\n    target.marker = marker_of(rec.type)')
+    source = replace_once(source,
+                          'if target and target.entity and not target.dead_t and state.frames % 6 == 0 then',
+                          'if target and target.source ~= "damage" and target.entity and not target.dead_t and state.frames % 6 == 0 then')
     start = source.index("local function tick()")
     end = source.index("-- ------------------------------------------------------------- game build --", start)
-    source = source[:start] + (ROOT / "src/update.lua").read_text() + "\n" + source[end:]
+    damage = ""
+    for name in ("damage_reader", "damage_detector"):
+        damage += "local make_" + name + " = (function()\n" + (ROOT / "src" / (name + ".lua")).read_text() + "\nend)()\n"
+    damage += (ROOT / "src/damage_target.lua").read_text() + "\n"
+    source = source[:start] + damage + (ROOT / "src/update.lua").read_text() + "\n" + source[end:]
     source = replace_once(source, '        if not ok and state.last_error ~= tostring(err) then state.last_error = tostring(err) log("error: " .. tostring(err)) end',
                           '        if not ok then\n'
                           '            hide()\n'
@@ -75,7 +84,7 @@ def patched_source():
                           '        end)\n'
                           '    end\n'
                           '    read_overrides()\n    state.status = "hooked"')
-    source = replace_once(source, "-- Enemy HP 1.1.2: when", "-- UI variant: Enemy HP HUD Style ui3. See README.txt and THIRD_PARTY.txt.\n-- Enemy HP 1.1.2: when")
+    source = replace_once(source, "-- Enemy HP 1.1.2: when", "-- UI variant: Enemy HP HUD Style ui4. See README.txt and THIRD_PARTY.txt.\n-- Enemy HP 1.1.2: when")
     return original, source
 
 
@@ -98,7 +107,7 @@ def main():
     dist.mkdir(exist_ok=True)
     (build / "enemy_hp.lua").write_text(source)
     (build / "ui-changes.diff").write_text("".join(difflib.unified_diff(original.splitlines(True), source.splitlines(True),
-                                                                      fromfile="Enemy HP 1.1.2", tofile="Enemy HP HUD Style ui3")))
+                                                                      fromfile="Enemy HP 1.1.2", tofile="Enemy HP HUD Style ui4")))
     patch = archive(source)
     package = build / "package"
     (package / "Addon").mkdir(parents=True, exist_ok=True)
@@ -106,11 +115,11 @@ def main():
     for suffix in (".stream", ".gpu_resources"):
         (package / "Addon" / (ARCHIVE + suffix)).write_bytes(b"")
     manifest = json.loads((WORKSPACE / "Enemy HP 1.1.2/manifest.json").read_text())
-    manifest["Name"] = "Enemy HP - HUD Style (BSL v15 / ui3 test)"
+    manifest["Name"] = "Enemy HP - HUD Style (BSL v15 / ui4 damage test)"
     manifest["Description"] = ("Enemy HP 1.1.2 with a HUD+ inspired slim gauge, native font, outlined numbers and damage trail. "
                                f"Requires {LOADER_REQUIREMENT}. Replace the original Enemy HP. In-game validation pending.")
     manifest["Options"][0]["Name"] = "Enemy HP - HUD Style"
-    manifest["Options"][0]["Description"] = "Compact HP gauge for your marked target."
+    manifest["Options"][0]["Description"] = "Compact HP gauge for marked targets and observed locally credited damage."
     (package / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     for name in ("README.txt", "THIRD_PARTY.txt", "enemy_hp.cfg.example", "dependencies.json"):
         (package / name).write_bytes((ROOT / name).read_bytes())

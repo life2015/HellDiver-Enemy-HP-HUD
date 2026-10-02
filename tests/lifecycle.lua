@@ -28,6 +28,7 @@ local function ping_colour() return {255,235,60,50} end
 local function spot_of() return {r0=1} end
 local NAMES={test="Test enemy"}
 local function screen_of() if position then return 900,500 end end
+local function damage_step() end -- This suite isolates manual-ping lifecycle.
 
 --[[TARGET_CONTROLLER]]
 --[[UPDATE_CONTROLLER]]

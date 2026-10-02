@@ -112,7 +112,7 @@ foreach ($suffix in @('.stream', '.gpu_resources', '')) {
     $installedFiles += [pscustomobject]@{name=($patchName + $suffix); sha256=(Get-Sha ($source + $suffix)); source=($source + $suffix)}
 }
 $recordPath = Join-Path $work 'deployment.json'
-$record = [ordered]@{status='prepared'; timeUtc=[DateTime]::UtcNow.ToString('o'); version='ehp-1.1.2-ui3-bsl15';
+$record = [ordered]@{status='prepared'; timeUtc=[DateTime]::UtcNow.ToString('o'); version='ehp-1.1.2-ui4-bsl15';
     gameRoot=$GameRoot; dataDir=$dataDir; gameBuild='25480438'; loader='BSL v15 (unchanged)';
     managerRegistered=$false; zipSha256=(Get-Sha $ArchivePath); originalFiles=$originalFiles; installedFiles=$installedFiles}
 $record | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $recordPath -Encoding UTF8
