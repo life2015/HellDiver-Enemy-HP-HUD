@@ -1,0 +1,107 @@
+Enemy HUD：攻击后自动显示的可行性评估
+日期：2026-10-02
+范围：源码调研与离线模拟；没有修改 Enemy HUD 功能，没有部署游戏插件。
+
+结论
+----
+“观察到本地玩家归属的掉血后，显示对应怪物 HUD”有明确实现依据，值得做原型。
+“每一次命中都准确识别目标、攻击者和武器，包含联机、挡弹、秒杀”尚无已验证的完整方案。
+目标 ID 的读取基本明确；伤害归属的及时性、完整性以及加入他人房间的行为，是主要剩余风险。
+
+调研版本（本次获取的公共源码）
+------------------------------
+HD2Runtime 0.28.1
+  https://github.com/SkyeShade/HD2Runtime
+  96ab2d258d867a5df4f22bb7b3321d84d28de21d，2026-10-01
+  本地：vendor/HD2Runtime
+HD2-G60-Smart-Targeting
+  https://github.com/etxp/HD2-G60-Smart-Targeting
+  0b06909cc5024a385121b779c6c3b27aae032391，2026-09-27
+  本地：vendor/HD2-G60-Smart-Targeting
+FlameDamageFixed v1.1
+  https://github.com/CowboyBingus/FlameDamageFixed
+  fcd723658a7a6e9a8f97fb01245158beb39175aa，2026-09-28
+  本地：vendor/FlameDamageFixed
+SentryAimRetention
+  https://github.com/CowboyBingus/SentryAimRetention
+  origin/main 21e95b336a076a3a083b13dcc4277708f2fde8a7，2026-09-25
+  仅 fetch 和读取远程分支，没有切换或合并现有工作树。
+
+最直接的参考：HD2Runtime
+------------------------
+runtime/event_sources.lua 的 health.poll 提供 entity_damaged：
+  entity / entity_id / unit_id / network_id：受伤实体身份。
+  damage / health：两次轮询之间观察到的掉血与当前血量。
+  attacker_peer / local_attacker：健康记录中的伤害归属玩家及是否为本地玩家。
+runtime/event_world.lua 提供本地 peer ID、实体查找、位置和尸体对应关系。
+这些字段足以把目标送入现有 Enemy HP 的位置投影和 HUD 绘制流程。
+
+数据依据来自 scripts/research_event_combat.py 及 research/event-combat-F5FEE03DCFDB.json：
+  健康管理器全局：game.dll + 0x3326688。
+  健康记录步长：0x1B8，当前主血量 +0x14，生命状态 +0x19C。
+  最近伤害归属玩家：记录 +0x38，u64 peer ID。
+  本地玩家：*(game.dll + 0x347CEF0) + 0xB398，u64 peer ID。
+  描述符 +8 是实体 ID，+12 是 unit ID；不能用“实体属于本机”标志代替伤害归属。
+  u64 peer ID 应按两个 u32 或无损字符串比较，不能转为 Lua double 后比较。
+这些管理器布局和模块指纹与当前 Enemy HP 支持的 Steam build 25480438 相符。
+仅说明代码针对同一构建，不能替代对用户 Windows 安装的版本确认。
+
+更精细的原生伤害队列也已有结构研究：每条 0x70 字节，目标实体 +0x00、
+来源类别 +0x04、dealer/owner +0x10/+0x14、归属玩家 +0x18、伤害量 +0x2C。
+但队列会被引擎消费，Lua update 和队列消费的先后时序尚未证实。
+不能据此声称每帧读取队列就能收到全部命中，也不能把统计用的 64 项 hit ring
+当成目标列表：现有研究只给出 dealer、未知 key 和命中计数，没有已证明的受害实体映射。
+
+其他 mod 的参考价值
+--------------------
+G60：目标搜索、优先级、实体有效性和所有权检查可参考；这些不等于玩家实际命中。
+SentryAimRetention：最新 cast_terrain 返回 hit_unit/hit_actor，但目前使用的是
+静态障碍物过滤器，明确排除角色/布娃娃；它判断遮挡，不能直接证明子弹击中某怪。
+FlameDamageFixed：用独立 Havok 碰撞组关联武器和火焰、避免自伤；没有通用的
+“本地玩家命中某敌人”回调。其火焰测试不能推广成所有武器的伤害归属证明。
+
+必须保留的限制
+--------------
+1. entity_damaged 是轮询状态差异，不是逐次命中通知。同一轮询间隔内的所有掉血
+   合并，只带最近归属；多人集火可能漏掉本地的一次攻击，或把合计掉血归于最后玩家。
+2. 上游逆向资料明确 +0x38 在新的伤害没有 creditor 时保留旧值。因此曾被自己打过的
+   敌人随后受到无归属伤害，可能仍报告 local_attacker。不能宣传为严格逐击归属。
+3. 主血量不变就不会产生这个伤害事件，例如完全挡住的攻击或只减少独立部位血量。
+4. 直接进入死亡状态走 entity_died/entity_killed；死亡后迅速变尸体时只能用缓存归属。
+   若秒杀发生在两次采样之间，尸体能说明目标死亡，却未必能恢复真正击杀者。
+5. player_hit/player_damage_dealt 可以按武器/投掷物等统计本地命中或伤害，但不带受害者。
+   不能靠时间接近把其武器来源准确拼接到某个 entity_damaged 上。
+6. local_attacker 表示游戏记账归属，不保证只包含手持武器；持续伤害、爆炸、战备等
+   可能也归本地玩家，精确筛除这些来源仍需额外证据。
+7. 上游事件读取器的保留快照主要来自飞船和同一场房主任务。部分来源统计有游戏内
+   测试，但“受害实体 + 本地伤害归属”在加入他人房间时的完整正确性尚未验证。
+
+本次验证
+--------
+probe_damage_attribution.py 使用上游合成内存 fixture 和生产事件代码；本地 Lupa Lua 5.1
+补齐 LuaJIT 的 xpcall 传参语义，直接驱动 events.tick，走字符串读取路径。
+五项断言通过：普通本地伤害实体映射、同轮询最后归属、保留旧归属、致死进入死亡事件、
+秒杀变尸体后无法恢复未采到的归属。后三类断言是复现限制，不是证明其已解决。
+未测试：Windows FFI、真实 lua51.dll、游戏启动链、真实伤害记录、联机同步、性能。
+最初的未适配 Lua 5.1 尝试未收到事件参数；补齐 xpcall 参数语义后上述探针通过。
+
+运行方式（当前工作站）：
+  PYTHONPATH=/private/tmp/ehp-validation \
+  /Users/retrox/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 \
+  EnemyHPHud/research/probe_damage_attribution.py
+
+建议的后续实现顺序（尚未实施）
+----------------------------
+先在 Windows 做只读观测，记录时间、实体/描述符身份、血量前后、life、creditor、
+本地 peer、最后 owner；分别验证单人、房主联机和加入他人房间。
+测试普通点射、队友单独射击、交替/同时集火、无归属环境伤害、部位伤害、挡弹、秒杀、
+霰弹/爆炸、持续伤害和战备。必须记录误显示和漏显示，不能只看一个成功例子。
+
+验证通过后做最小功能：检测到本地归属掉血 → 选中敌人 → HUD 显示约 3 秒，
+再次命中续时，死亡淡出；未知归属不推断。范围伤害时限制同时显示数量。
+读取宜参考批量读取和实体生命周期校验，不能把当前逐实体扫描直接提到每帧运行。
+显示在怪物右侧属于独立的布局调整，受伤检测只负责提供目标，二者可以分开验证。
+
+依赖选择：HD2Runtime 声明 BSL release v15 / API 1 最低要求；BSL 本身没有提供此命中事件。
+可以另加 HD2Runtime 依赖直接订阅，也可以按已确认的数据布局独立实现必要的只读检测。
+当前建议先验证读取路径，再决定是否引入完整运行库；没有修改依赖或复制其功能代码。

@@ -1,0 +1,46 @@
+解包结论（依据当前目录提供的两个版本）
+
+Enemy HP 1.1.2
+- 1 个归档，1 个 Lua 资源，资源名 0cdb2ce39c96e9a4。
+- 资源路径声明：mods/combat/enemy_hp。
+- 原始资源内为可读 Lua，不需要反编译。stream 和 gpu_resources 都为空。
+- 原来的界面只有一个矩形底板和一个文本对象，固定字号 18。
+- 文本宽度读取使用 Vector3.x；HUD+ 对 text_extents 返回的 Vector2 使用字符串提取。
+  若原版测量失败，就回退到每个字符 12 像素，底板和居中会变粗糙。
+- 只跟踪最新的本人实体标记；不是给所有敌人添加永久血条。
+- 依赖原版 README 指定的 Bingus Shared Loader v15+ 和 Steam build 25480438。
+
+HD2 HUD+ 0.1.13
+- 11 个归档，76 个资源：10 个 Lua、2 个纹理资源、64 个材质资源。
+- COMMON/patch_0 包含 boot 包装脚本 f476df93691895fa 和核心 ef0157640928609f。
+- COMMON/patch_1、patch_2 包含弧形/图标相关的纹理和材质。
+- Integrated、Rings、Simple 共用资源名 d3c26ab7c75dacfb，分别位于不同选项目录。
+- Faint 与 Full brightness 共用 c622e294f0394777，分别位于不同选项目录。
+  这些是互斥选项，不能把所有解包目录混合打成一个包。
+- UI 使用原生字体、保留式 GUI 图元、文字描边、1920×1080 基准布局。
+- 默认正文色 RGB(240,240,226)，警示色 RGB(235,140,110)。
+- HUD+ 的完整显示/缩放系统还读取游戏 HUD widget；本 UI 改版仅复用设计思路，
+  大小根据分辨率及独立 scale 配置计算。
+
+修改范围
+- 重写 Enemy HP 的绘制层，保留标记/内存/健康值的底层读取及版本检查/投影函数。
+- ui3 调整目标生命周期：标记消失时先确认死亡，避免跳过提示；死亡淡出使用最后可见位置。
+- 添加保留式细血条、分层数字、掉血残影和死亡淡出。
+- 修正重复加载检查，补充 GUI 隐藏、世界切换和 shutdown 清理。
+- 只输出原有 Enemy HP Lua 资源，不带 HUD+ 的 boot 或公共资源。
+- 该资源与 HUD+ 所有选项无静态哈希冲突；离线执行了两种加载顺序下的回调测试。
+- 工作区 BingusSharedLoader 已从官方发布 v12 同步到 v18（提交 3d7e3a1）。
+  先前看到的 state.version=13 是内部运行时版本，不是发布版本号。
+- BSL v15 引入 HD2-Addon 声明扫描，可自动发现 mods/combat/enemy_hp，无需改硬编码列表。
+  API 1 和发现能力最低依赖 v15；上游从 v17 更新游戏 build 25480438 的构建元数据。
+  核对 v15..v17 源码后确认：发现实现与启动接口未变，不能据元数据推出本 mod 必须 v17。
+  dependencies.json 固定当前源码 v18，并将这次测试部署目标单独设为 v15。
+- v18 的 state.version 为 17；内部运行时标记与发布标签不同，不用它直接比较发布版本。
+
+查阅入口
+unpacked/inventory.json：每个资源的偏移、大小、文件位置和 SHA-256。
+unpacked/enemy_hp/Addon/9ba626afa44a3aa3.patch_0/0cdb2ce39c96e9a4.lua
+unpacked/hud_plus/COMMON/9ba626afa44a3aa3.patch_0/ef0157640928609f.lua
+unpacked/hud_plus/HUD_INTEGRATED/9ba626afa44a3aa3.patch_3/d3c26ab7c75dacfb.lua
+build/offline-tests.txt：离线测试结果及未验证范围。
+preview/comparison.png：根据实际 Lua 绘制调用生成的示意预览，字体为替代字体。

@@ -1,0 +1,16 @@
+Enemy HP 1.1.2
+基础：用户提供的 Enemy HP 1.1.2/Addon/9ba626afa44a3aa3.patch_0。
+保留原脚本中的来源说明和署名；原包未提供明确再分发许可。
+本修改供当前用户本地测试，未发布到第三方网站。
+原始 README 保存在 ../Enemy HP 1.1.2/README.md；原始源码见 unpacked/enemy_hp/。
+
+HD2 HUD+ 0.1.13 by DDRK1NG
+https://www.nexusmods.com/helldivers2/mods/15298
+参考原生字体呈现、1920x1080 基准、米白/暖红配色、描边数字与细血条。
+其 README 允许在注明作者并链接 Nexus 页面后复用和修改。
+本包使用独立的 UI 实现，不打包 HUD+ 的 boot、核心脚本、贴图或材质资源。
+HUD+ 的完整解包内容仅保存在本地 unpacked/hud_plus/，不包含在发布 ZIP 中。
+
+etxp / HD2 G-60 Smart Targeting
+Enemy HP 原脚本注明：标记列表结构参考该开源 MIT 项目。
+该逻辑在此 UI 修改版中保持原样。

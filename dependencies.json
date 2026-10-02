@@ -1,0 +1,20 @@
+{
+  "runtime_dependencies": [
+    {
+      "name": "Bingus Shared Loader",
+      "path": "../BingusSharedLoader",
+      "url": "https://github.com/CowboyBingus/BingusSharedLoader.git",
+      "tag": "v18",
+      "commit": "3d7e3a120828178573ef1ee0a5c7eeae4a951865",
+      "minimum_release": 15,
+      "api": 1,
+      "features": ["addon_discovery"],
+      "upstream_release_for_game_build": {"25480438": 17},
+      "deployment_target_release": 15,
+      "recommended_release": 18,
+      "entry": "mods/combat/enemy_hp",
+      "purpose": "Discover the declared plaintext addon and initialize it through the game's require function.",
+      "bundled": false
+    }
+  ]
+}

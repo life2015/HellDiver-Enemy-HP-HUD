@@ -1,0 +1,19 @@
+# Generated archives, extracted third-party resources and local diagnostics.
+/build/
+/dist/
+/unpacked/
+/preview/
+/research/vendor/
+
+# Python and operating-system files.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.DS_Store
+
+# Never track game executables, process dumps or local logs.
+*.exe
+*.dll
+*.dmp
+*.log
