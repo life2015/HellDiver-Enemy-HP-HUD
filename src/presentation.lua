@@ -1,4 +1,4 @@
--- Enemy HP HUD presentation. Native font, outlined numerals, slim health gauge.
+-- Enemy HP HUD+ presentation. Native font, outlined numerals, slim health gauge.
 -- Visual reference: HD2 HUD+ 0.1.13 by DDRK1NG
 -- https://www.nexusmods.com/helldivers2/mods/15298
 -- This module owns only its screen GUI; it does not read or write game memory.

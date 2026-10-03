@@ -17,7 +17,7 @@ RESOURCE_TYPE = 0xA14E8DFA2CD117E2
 GAME_BUILD = "25480438"
 LOADER = json.loads((ROOT / "dependencies.json").read_text())["runtime_dependencies"][0]
 LOADER_REQUIREMENT = f"Bingus Shared Loader v{LOADER['minimum_release']}+ / API {LOADER['api']} with addon discovery"
-RELEASE_NAME = "Enemy-HP-HUD-Style-1.1.2-ui4-BSL15-test.zip"
+RELEASE_NAME = "Enemy HP HUD+ 1.1.2-ui4-BSL15.zip"
 
 
 def replace_once(source, old, new):
@@ -84,7 +84,7 @@ def patched_source():
                           '        end)\n'
                           '    end\n'
                           '    read_overrides()\n    state.status = "hooked"')
-    source = replace_once(source, "-- Enemy HP 1.1.2: when", "-- UI variant: Enemy HP HUD Style ui4. See README.txt and THIRD_PARTY.txt.\n-- Enemy HP 1.1.2: when")
+    source = replace_once(source, "-- Enemy HP 1.1.2: when", "-- UI variant: Enemy HP HUD+ ui4. See README.txt and THIRD_PARTY.txt.\n-- Enemy HP 1.1.2: when")
     return original, source
 
 
@@ -107,7 +107,7 @@ def main():
     dist.mkdir(exist_ok=True)
     (build / "enemy_hp.lua").write_text(source)
     (build / "ui-changes.diff").write_text("".join(difflib.unified_diff(original.splitlines(True), source.splitlines(True),
-                                                                      fromfile="Enemy HP 1.1.2", tofile="Enemy HP HUD Style ui4")))
+                                                                      fromfile="Enemy HP 1.1.2", tofile="Enemy HP HUD+ ui4")))
     patch = archive(source)
     package = build / "package"
     (package / "Addon").mkdir(parents=True, exist_ok=True)
@@ -115,10 +115,10 @@ def main():
     for suffix in (".stream", ".gpu_resources"):
         (package / "Addon" / (ARCHIVE + suffix)).write_bytes(b"")
     manifest = json.loads((WORKSPACE / "Enemy HP 1.1.2/manifest.json").read_text())
-    manifest["Name"] = "Enemy HP - HUD Style (BSL v15 / ui4 damage test)"
+    manifest["Name"] = "Enemy HP HUD+"
     manifest["Description"] = ("Enemy HP 1.1.2 with a HUD+ inspired slim gauge, native font, outlined numbers and damage trail. "
                                f"Requires {LOADER_REQUIREMENT}. Replace the original Enemy HP. In-game validation pending.")
-    manifest["Options"][0]["Name"] = "Enemy HP - HUD Style"
+    manifest["Options"][0]["Name"] = "Enemy HP HUD+"
     manifest["Options"][0]["Description"] = "Compact HP gauge for marked targets and observed locally credited damage."
     (package / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     for name in ("README.txt", "THIRD_PARTY.txt", "enemy_hp.cfg.example", "dependencies.json"):
