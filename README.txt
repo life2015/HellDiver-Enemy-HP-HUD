@@ -1,4 +1,14 @@
-Enemy HP HUD+ 1.7.0 / BSL v18+
+Enemy HP HUD+ 1.7.1 / BSL v18+
+
+1.7.1 坐标修复 / Projection fix
+- 每次投影匹配当前视角，不再使用相机列表第一项或跨帧、跨局缓存相机。
+  Match the current view for each projection; remove first-camera selection and retained camera handles.
+- 使用与 HUD 一致的视口尺寸，无效坐标隐藏，并记录投影状态供诊断。
+  Use the HUD viewport, hide invalid coordinates and report projection status for diagnosis.
+- 保留独立 Ping/攻击血条、部位血条及击杀判断。未改变哨戒炮伤害归属触发规则。
+  Preserve independent targets, part bars and death rules, including existing sentry-credit triggers.
+- 修复已知定位缺陷；游戏内验证仍待进行，尚不能确认覆盖所有间歇失效情况。
+  Addresses known projection defects; live validation of intermittent failures is still pending.
 
 1.7.0 更新 / What's new
 - Ping 标记与攻击触发分为两套独立血条。Ping A 后攻击 B，两只怪物的血条可同时显示。

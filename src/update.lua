@@ -52,7 +52,10 @@ local function update_target(target, last_hp, ui, now, menu, suppressed)
             state.last_proj_error = tostring(sx); sx, sy = nil, nil
         end
     end
-    if target.off and not sx then hide() return target, last_hp, false end
+    -- No centre-screen fallback for a live card or an unpositioned death fade.
+    if type(sx) ~= "number" or type(sy) ~= "number" or sx ~= sx or sy ~= sy then
+        hide() return target, last_hp, false
+    end
     local wres, hres = sr.Gui.resolution()
     if sx and (sx < 0 or sx > wres or sy < 0 or sy > hres) then hide() return target, last_hp, false end
     if suppressed then

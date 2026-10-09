@@ -110,4 +110,19 @@ acquire(24,169,20.8);assert(not ping_target.dead_t and label().text=="100")
 -- World changes must not create a death card for the previous mission.
 world="other-main";health="missing";step(180,21.1)
 assert(not ping_target and not ping_shown)
+-- Rendering must never fall back to the centre when no coordinates exist,
+-- including malformed/missing offsets and a kill before its first visible frame.
+world="main";health=100;readable=true;position=false
+local hidden={world=world,source="damage",unit=24,entity=24,until_t=100}
+local kept,_,visible=update_target(hidden,100,ui,30,false)
+assert(kept==hidden and visible==false, "missing offset/position must not draw fallback")
+hidden.dead_t=30;hidden.death_sx=nil;hidden.death_sy=nil
+_,_,visible=update_target(hidden,0,ui,30.1,false)
+assert(not visible, "unpositioned death must not appear at screen centre")
+hidden.death_sx=0/0;hidden.death_sy=500
+_,_,visible=update_target(hidden,0,ui,30.2,false)
+assert(not visible, "NaN coordinates must not reach renderer")
+hidden.death_sx=900;hidden.death_sy=500
+_,_,visible=update_target(hidden,0,ui,30.3,false)
+assert(visible, "valid frozen death coordinates still render")
 return "PASS: real ping/tick/render integration; repeated kills, removed pings/corpses, one-frame HP lag, independent fades, manual cancel, unreadable health, menus, ping_target switch and world change"

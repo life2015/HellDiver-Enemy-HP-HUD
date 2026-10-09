@@ -48,13 +48,16 @@ def main():
     print("PASS: generated script and renderer compile under Lua 5.1")
     # Check exact preservation of game-reading functions and version guard.
     for begin, end in [("-- --------------------------------------------------------------------- ffi --", "local last_mark = nil"),
-                       ("local cam, cam_t = nil, -1", "local shown = false"),
                        ("-- ------------------------------------------------------------- game build --", "local original_update =")]:
         expected = original[original.index(begin):original.index(end)]
         actual = source[source.index(begin):source.index(end)]
         actual = actual.replace("local function screen_of(now, subject)\n    local target = subject or target", "local function screen_of(now)")
         assert expected == actual
-    print("PASS: native readers and build guard unchanged; projection math unchanged with explicit per-card target")
+    print("PASS: native readers and build guard unchanged")
+    projection_factory = lua.execute((ROOT / "src/projection.lua").read_text())
+    print(lua.execute((ROOT / "tests/projection.lua").read_text())(projection_factory))
+    assert "local cam, cam_t" not in source
+    assert (ROOT / "src/projection.lua").read_text() in source
     env = lua.execute((ROOT / "tests/engine.lua").read_text(encoding="utf-8"))
     factory = lua.execute((ROOT / "src/presentation.lua").read_text(encoding="utf-8"))
     run = lua.execute((ROOT / "tests/presentation.lua").read_text(encoding="utf-8"))

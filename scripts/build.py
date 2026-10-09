@@ -18,7 +18,7 @@ GAME_BUILD = "25480438"
 DEPENDENCIES = json.loads((ROOT / "dependencies.json").read_text())["runtime_dependencies"]
 LOADER, MENU = DEPENDENCIES
 LOADER_REQUIREMENT = f"Bingus Shared Loader v{LOADER['minimum_release']}+ / API {LOADER['api']} with addon discovery"
-MOD_VERSION = "1.7.0"
+MOD_VERSION = "1.7.1"
 RELEASE_NAME = f"Enemy HP HUD+ {MOD_VERSION}-BSL18.zip"
 
 
@@ -88,8 +88,24 @@ def patched_source():
     ring = re.sub(r"\blast_hp\b", "ping_hp", ring)
     ring = ring.replace("local last_mark = nil", "local last_mark = nil\nlocal ping_target, ping_hp, ping_shown")
     source = source[:ring_start] + ring + source[ring_end:]
-    source = replace_once(source, "local function screen_of(now)",
-                          "local function screen_of(now, subject)\n    local target = subject or target")
+    projection_start = source.index("local cam, cam_t = nil, -1")
+    projection_end = source.index("local shown = false", projection_start)
+    projection = "local make_projection = (function()\n" + (ROOT / "src/projection.lua").read_text() + "\nend)()\n"
+    projection += """local screen_of = make_projection(sr, unit_position, function(subject, reason, detail, now)
+    local channel = subject and subject.source == "damage" and "damage" or "ping"
+    state.projection = state.projection or {}
+    local previous = state.projection[channel]
+    state.projection[channel] = {reason=reason, detail=detail, unit=subject and subject.unit,
+        log_t=previous and previous.log_t, log_reason=previous and previous.log_reason}
+    if (not previous or previous.log_reason ~= reason) and
+        (not previous or not previous.log_t or now - previous.log_t >= 5) then
+        state.projection[channel].log_t = now
+        state.projection[channel].log_reason = reason
+        log("projection " .. channel .. ": " .. reason .. (detail and ("; " .. detail) or ""))
+    end
+end)
+"""
+    source = source[:projection_start] + projection + source[projection_end:]
     start = source.index("local function tick()")
     end = source.index("-- ------------------------------------------------------------- game build --", start)
     damage = ""
