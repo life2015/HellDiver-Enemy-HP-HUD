@@ -142,7 +142,8 @@ return function(sr, font_ids, log)
         if ratio >= self.trail then self.trail = ratio
         elseif now > self.hold_until then self.trail = math.max(ratio, self.trail - dt * 0.8) end
         self.last_ratio = ratio
-        local alpha = 230 * clamp((now - self.born) / 0.12, 0, 1)
+        local alpha = 230 * clamp((options.opacity or 100) / 100, 0, 1)
+            * clamp((now - self.born) / 0.12, 0, 1)
         if model.dead_t then alpha = alpha * clamp((1.5 - (now - model.dead_t)) / 0.45, 0, 1) end
         local current = model.dead_t and "ELIMINATED" or string.format("%.0f", hp)
         local maximum_text = model.dead_t and "" or (" / " .. string.format("%.0f", maximum))
@@ -154,9 +155,34 @@ return function(sr, font_ids, log)
         local pw = self:measure("percent", percent, small_size).width
         local name = options.show_name and model.name or ""
         local nw = self:measure("name", name, small_size).width
-        local width = round(math.max((options.width or 172) * scale, cw + mw + pw + 20 * scale, nw))
+        -- Use total maximum HP so an eligible enemy keeps its part HUD as it weakens.
+        local rows, part_size = {}, 13 * scale
+        local width = math.max((options.width or 172) * scale, cw + mw + pw + 20 * scale, nw)
+        local parts = maximum >= 775 and not model.dead_t and (model.parts or (model.part and {model.part})) or {}
+        for _, part in ipairs(parts) do
+            if (not part.until_t or now <= part.until_t) and #rows < 3 then
+                local index = #rows + 1
+                local prefix = index == 1 and "part_" or ("part" .. index .. "_")
+                local label = part.label
+                if part.fatal then label = label .. " [FATAL]"
+                elseif part.downed then label = label .. " [DOWN]" end
+                local part_max = not part.shared and type(part.max) == "number"
+                    and part.max > 0 and part.hp >= 0 and part.hp <= part.max and part.max or nil
+                local part_ratio = part_max and clamp(part.hp / part_max, 0, 1) or nil
+                local value = string.format("%.0f HP", math.max(0, part.hp))
+                if part_ratio then
+                    value = string.format("%.0f / %.0f  %d%%", part.hp, part_max, round(part_ratio * 100))
+                elseif part.shared then value = value .. " (SHARED)" end
+                local label_width = self:measure(prefix .. "label", label, part_size).width
+                local value_width = self:measure(prefix .. "value", value, part_size).width
+                width = math.max(width, label_width + value_width + 20 * scale)
+                rows[index] = {label=label, value=value, value_width=value_width, ratio=part_ratio, hp=part.hp}
+            end
+        end
+        width = round(width)
         local x = round(clamp((sx or sw / 2) - width / 2, 12 * scale, sw - width - 12 * scale))
-        local y = round(clamp((sy or sh * 0.4) + (options.offset or -40), 16 * scale,
+        local bottom = #rows > 0 and (60 + (#rows - 1) * 38) or 16
+        local y = round(clamp((sy or sh * 0.4) + (options.offset or -40), bottom * scale,
                              sh - (name ~= "" and 44 or 24) * scale))
         local fill = (ratio <= 0.25 or model.dead_t) and WARNING or WHITE
         local ping = model.colour or {255, 240, 240, 226}
@@ -172,6 +198,27 @@ return function(sr, font_ids, log)
         self:text("current", current, current_size, x, y, fill, alpha, edge)
         self:text("maximum", maximum_text, small_size, x + cw + 4 * scale, y, MUTED, alpha, edge)
         self:text("percent", percent, small_size, x + width - pw, y, MUTED, alpha, edge)
+        for index = 1, 3 do
+            local row = rows[index]
+            local prefix = index == 1 and "part_" or ("part" .. index .. "_")
+            if row or self.texts[prefix .. "label1"] then
+                local part_alpha = row and alpha or 0
+                local part_colour = row and row.hp == 0 and WARNING or {230, 192, 119}
+                local dy = (index - 1) * 38 * scale
+                self:text(prefix .. "label", row and row.label or "", part_size, x, y - 34 * scale - dy,
+                    part_colour, part_alpha, edge)
+                self:text(prefix .. "value", row and row.value or "", part_size,
+                    x + width - (row and row.value_width or 0), y - 34 * scale - dy, part_colour, part_alpha, edge)
+                local bar_alpha = row and row.ratio and part_alpha or 0
+                local py, ph = y - round(48 * scale) - dy, math.max(5, round(9 * scale))
+                local part_width, part_height = math.max(0, width - 2 * edge), math.max(1, ph - 2 * edge)
+                self:rect(prefix .. "outline", x, py, width, ph, 950, {133, 118, 83}, bar_alpha)
+                self:rect(prefix .. "track", x + edge, py + edge, part_width, part_height,
+                    951, {67, 67, 60}, bar_alpha)
+                self:rect(prefix .. "fill", x + edge, py + edge, part_width * (row and row.ratio or 0), part_height,
+                    952, {240, 190, 80}, bar_alpha)
+            end
+        end
         if name ~= "" or self.texts.name1 then
             self:text("name", name, small_size, x, y + 24 * scale, WHITE, alpha, edge)
         end

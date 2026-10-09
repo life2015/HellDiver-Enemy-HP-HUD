@@ -1,5 +1,14 @@
 offset=-40
 scale=1
+opacity=100
 width=172
+# scale, opacity, auto_damage, auto_min_hp, part_hud and multi_parts are menu-managed; cfg is the fallback.
 auto_damage=1
+auto_min_hp=0
 damage_duration=3
+
+# Part HP/bar/name/flags for enemies with max total HP >= 775 (1 = enabled, 0 = disabled)
+part_hud=1
+
+# Optional three-part display (default off; part_hud must also be enabled)
+multi_parts=0

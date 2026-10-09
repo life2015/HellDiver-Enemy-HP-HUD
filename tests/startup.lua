@@ -1,4 +1,4 @@
-return function(enemy, hud, loader, entries, runtime_version)
+return function(enemy, hud, loader, entries, runtime_version, supported, menu_fixture)
     local function u32(n)
         local out={}
         for i=1,4 do out[i]=string.char(n%256); n=math.floor(n/256) end
@@ -9,7 +9,7 @@ return function(enemy, hud, loader, entries, runtime_version)
         for offset,value in pairs(fields) do out=out:sub(1,offset)..value..out:sub(offset+#value+1) end
         return out
     end
-    for _, order in ipairs({"enemy-first","hud-first","unsupported"}) do
+    for _, order in ipairs({"enemy-first","hud-first","no-menu","unsupported"}) do
         local env={}
         for k,v in pairs(_G) do env[k]=v end
         env._G=env
@@ -19,6 +19,8 @@ return function(enemy, hud, loader, entries, runtime_version)
         env.package={loaded={}}
         env.DISCOVERED_ENTRIES=entries
         env.jit=nil -- Never change the test host's JIT settings.
+        local menu_state
+        if order=="enemy-first" then env.ModOptionsMenu,menu_state=menu_fixture() end
         local memory={}
         for _, row in ipairs({{0x10000000,0x6AB3B43F,0x4744000,0xECDA6F},
                               {0x20000000,0x6AB382E4,0x39E8000,0xE48B1D}}) do
@@ -61,11 +63,17 @@ return function(enemy, hud, loader, entries, runtime_version)
         assert(env.CowboyBingusModLoader.api==1 and env.CowboyBingusModLoader.version==runtime_version)
         assert(env.CowboyBingusModLoader.modules['mods/combat/enemy_hp']=="loaded")
         assert(env.CowboyBingusModLoader.discovery=="1 declared entries" and addon_loads==1)
-        if order=="unsupported" then
+        if not supported then
+            assert(env.EnemyHp.status=="requires_bsl_v18" and env.update==before,
+                "pre-v18 BSL must not install the addon update")
+        elseif order=="unsupported" then
             assert(env.EnemyHp.status=="unsupported_build" and env.update==before)
         else
             assert(env.EnemyHp.status=="hooked")
-            if order=="enemy-first" then assert(env.loadstring(hud))() end
+            if order=="enemy-first" then
+                assert(menu_state.option_count==6, "menu-first registers at startup")
+                assert(env.loadstring(hud))()
+            elseif order=="hud-first" then env.ModOptionsMenu,menu_state=menu_fixture() end
             local installed=env.update
             assert(env.loadstring(loader))()
             assert(addon_loads==1, "BSL must initialize the discovered addon only once")
@@ -74,6 +82,10 @@ return function(enemy, hud, loader, entries, runtime_version)
             local a,b,c=env.update("first","last")
             assert(a=="first" and b==nil and c=="last" and calls==1)
             assert(env.EnemyHp.frames==1, "tick must execute exactly once through both wrappers")
+            if menu_state then
+                assert(menu_state.option_count==6, "late menu registers on update")
+                for _,callbacks in pairs(menu_state.callbacks) do assert(#callbacks==1) end
+            end
             a,b,c=env.shutdown("done")
             assert(a=="done" and b==nil and c==7 and shutdowns==1)
         end

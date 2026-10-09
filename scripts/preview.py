@@ -14,7 +14,7 @@ def font(size, label=False):
     return ImageFont.truetype(LABEL if label else FONT, max(1, round(size)))
 
 
-def scene(hp=2073, death=False, trail=False, original=False):
+def scene(hp=2073, death=False, trail=False, original=False, part=None, parts=None):
     lua=LuaRuntime(unpack_returned_tuples=True)
     e=lua.execute((ROOT/"tests/engine.lua").read_text())
     e.measure=lambda text,size: font(size).getlength(text)
@@ -29,6 +29,10 @@ def scene(hp=2073, death=False, trail=False, original=False):
         make=lua.execute((ROOT/"src/presentation.lua").read_text())
         ui=make(e.sr,e.font_ids)
         model=lua.table_from(dict(key="target",hp=6500 if trail else hp,max=6500,colour=lua.table_from([255,235,60,50])))
+        if part is not None:
+            model.part=lua.table_from(part)
+        if parts is not None:
+            model.parts=lua.table_from([lua.table_from(p) for p in parts])
         options=lua.table_from(dict(offset=-40,scale=1,width=172))
         ui.draw(ui,model,960,540,0,options)
         ui.draw(ui,model,960,540,0.2,options)

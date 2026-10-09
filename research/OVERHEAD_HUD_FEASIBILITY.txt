@@ -1,0 +1,69 @@
+Enemy HP HUD+ overhead anchor feasibility — 2026-10-09
+Scope: research only. No runtime source edits, package build, remote changes or deployment.
+
+Conclusion
+A world-following overhead card is feasible using the existing target identities,
+GUI and projection pipeline. Exact animated head attachment is not yet verified
+for enemy units; it requires model/node discovery and in-game sampling.
+
+Verified current implementation (1.7.0)
+- build/enemy_hp.lua unit_position reads root translation from the validated unit
+  registry, object+0x88 matrix array, first matrix translation +48.
+- Ping ring_step and src/damage_target.lua assign off={0,0,0.9*spot.r0}, falling
+  back to 0.9. spot.r0 is a spotting component field, NOT a verified head height.
+- screen_of projects root+off through Camera.world_to_screen.
+- src/presentation.lua adds OFFSET (default -40; negative is below), centres the
+  card, draws part rows below it and clamps the card inside screen edges.
+  Raising the main bar alone can leave part rows covering the enemy; overhead
+  layout must place the bottom of the entire card above its anchor.
+- src/update.lua already separates ping/damage targets, suppresses duplicates,
+  hides off-screen/behind-camera targets and retains last coordinates for death.
+- No occlusion/raycast check exists in the current Enemy HP projection path.
+
+Camera issue to address before evaluating overhead alignment
+Current Enemy HP picks cameras[1] and caches the camera for five seconds, while
+using World.debug_camera_pose for its front test. The first enumerated camera
+is not guaranteed to be the player view.
+SentryHUD/research/WORLD_MARKERS.txt documents captures with five cameras,
+including four orthographic overhead cameras. SentryHUD/src/markers.lua matches
+Camera.world_pose to the active view, projects using explicit GUI resolution,
+and computes front distance from the same selected camera. This is a reusable
+local implementation reference, not proof that enemy head alignment works.
+Do not use world_to_screen's second return as metres: on this game it is clip
+space depth. Avoid retaining temporary native camera/vector/IdString values.
+
+Head-node candidate
+Autodesk's Unit API documents has_node, node, world_position and bounding-box
+queries: https://help.autodesk.com/cloudhelp/ENU/Stingray-Help/lua_ref/obj_stingray_Unit.html
+HD2-Target-Overlay/src/overlay.lua already contains guarded has_node/node and
+world_position use for non-enemy model anchors. Its comments record zero root
+positions on some models; do not assume all bindings/handles work identically.
+The health-record numeric unit ID needs a validated conversion to the engine's
+Unit handle before passing it into native Unit functions. Existing direct root
+reading does not itself prove this conversion or head-node identity.
+A PART label such as Head identifies a health zone, not a confirmed scene-node
+name/index. Never pass a health pool index to a bone API.
+No enemy head-name/index map or enemy runtime head-coordinate capture was found
+in the source paths examined. No blanket head index/name is established.
+Bounding box top is an alternative candidate, but availability, animation bounds,
+weapon/wing inclusion and its behavior on this game build remain unverified.
+
+Suggested prototype design (not implemented)
+1. Match the actual view and explicit viewport first; share projection setup for
+   ping and damage cards. Keep current target/damage/death rules.
+2. Read and validate model identity, root and candidate head node for a small
+   set of humanoid bots, small/large bugs and flying enemies. Confirm motion in
+   standing, turning, attack, head destruction and despawn states.
+3. Prefer a verified per-model head/upper-body anchor; otherwise use a calibrated
+   per-type root height. Do not claim the fallback follows head animation.
+4. Place the full card above the projected point with scale-aware pixel padding.
+   Keep text readable at distance; smooth small animation motion without lagging
+   fast camera turns. Define clipping and two-card overlap behavior explicitly.
+5. On missing/detached head, fall back to body anchor while still alive. Preserve
+   confirmed-death-only ELIMINATED and freeze its last valid coordinates.
+6. Verify third person/ADS, FOV, aspect ratio, large/flying targets, three part
+   rows, two nearby targets and near-screen-edge behavior in game.
+
+No performance measurement was performed. At most two target anchors makes the
+incremental work plausibly modest; bounded node discovery outside per-frame
+work is preferable. Existing offline tests cannot establish visual alignment.

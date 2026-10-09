@@ -35,9 +35,15 @@ return function(api)
             local unit, entity = u32(d, 12), u32(d, 8)
             local offset = index * 0x1B8
             if entity ~= 0 and entity ~= 0xFFFFFFFF and unit ~= 0xFFFFFFFF then
-                result.records[unit] = {unit=unit, entity=entity, type=hex(d, 0),
+                local parts = {}
+                for zone = 0, 37 do
+                    local health = i32(data, offset + 0xF8 + zone * 4)
+                    -- Keep signed values so sentinels cannot become huge HP.
+                    parts[zone + 1] = health
+                end
+                result.records[unit] = {manager=hm, unit=unit, entity=entity, type=hex(d, 0),
                     descriptor=descriptor, network=u32(d, 16), hp=i32(data, offset + 0x14),
-                    life=u32(data, offset + 0x19C), creditor=hex(data, offset + 0x38)}
+                    life=u32(data, offset + 0x19C), creditor=hex(data, offset + 0x38), parts=parts}
             end
         end
         -- If the manager resized or changed while sampling, discard the sample.

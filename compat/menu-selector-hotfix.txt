@@ -1,0 +1,29 @@
+Mod Options Menu v1.2 - Selector State Hotfix
+
+Independent compatibility fix for CowboyBingus Mod Options Menu, upstream commit
+fd0160807b6cc75c2eeb74dbf9793a3c5d30deb6. Upstream: https://github.com/CowboyBingus/ModOptionsMenu
+Upstream license: 0BSD. Original menu, runtime and translations are by their respective authors.
+This is a local compatibility build, not an official upstream release.
+
+症状：Mod 菜单中的开关/箭头变暗，但仍能切换。
+修复：重用原生选项行前，清除右侧选择器遗留的 disabled 标志。
+不修改选项值、保存文件、游戏设置、Enemy HP 的血量门槛或死亡判断。
+这是菜单依赖的替换包，不是 Enemy HP 更新包。需要 BSL v18+，只支持游戏 build 25480438。
+替换已有 Mod Options Menu；不要同时启用两份菜单。旧文件应先备份，退出游戏和 Arsenal 后替换。
+
+Cause (game.dll SHA256 2e2c3b7c2500646dadd5f2b4c6e0504dbb7e7896139f64cddc0d1813c718f51e):
+- Native row initialization resets row+0x7ac8..0x7acb, including parent disabled.
+- Selector initialization at RVA 0x17fc640 resets +0x32f5/6 but not +0x32f7.
+- The selector colour pass at RVA 0x17fdf30 uses +0x32f7 to dim the value and arrows.
+- Thus a reused row accepts input while its child still looks disabled.
+- Clear selector+0x32f7 BEFORE row_init, so the native colour pass paints normally.
+- Only Mod selector rows are changed; sliders already reset their disabled flag.
+- Existing upstream module hashes/native signatures remain checked. No new hooks.
+
+Reproduce/build:
+PYTHONPATH=<lupa location> python tests/verify_menu_rows.py
+python scripts/build_menu_hotfix.py
+The build directory also contains the pinned upstream tests, with test_options_tab.lua
+extended to seed stale disabled selectors and assert that MODS clears them.
+Run those tests using the game's lua51.dll in an isolated process.
+Visual confirmation inside the game is still required.

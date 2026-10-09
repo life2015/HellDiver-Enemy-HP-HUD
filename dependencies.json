@@ -6,14 +6,26 @@
       "url": "https://github.com/CowboyBingus/BingusSharedLoader.git",
       "tag": "v18",
       "commit": "3d7e3a120828178573ef1ee0a5c7eeae4a951865",
-      "minimum_release": 15,
+      "minimum_release": 18,
       "api": 1,
       "features": ["addon_discovery"],
       "upstream_release_for_game_build": {"25480438": 17},
-      "deployment_target_release": 15,
+      "deployment_target_release": 18,
       "recommended_release": 18,
       "entry": "mods/combat/enemy_hp",
-      "purpose": "Discover the declared plaintext addon and initialize it through the game's require function.",
+      "purpose": "Discover the addon and provide the v18 shared LuaJIT budget required by this release.",
+      "bundled": false
+    },
+    {
+      "name": "Mod Options Menu",
+      "url": "https://github.com/CowboyBingus/ModOptionsMenu",
+      "path": "research/vendor/ModOptionsMenu",
+      "commit": "fd0160807b6cc75c2eeb74dbf9793a3c5d30deb6",
+      "minimum_release": "1.2",
+      "api": 1,
+      "entry": "mods/cowboybingus/mod_options_menu",
+      "requires_loader_minimum": 18,
+      "purpose": "Native MODS tab and saved settings; required for the menu. Without it, HUD uses cfg/defaults.",
       "bundled": false
     }
   ]

@@ -73,6 +73,11 @@ try {
     if ($entries.Count -ne $allowed.Count -or @(Compare-Object $allowed $entries).Count) {
         throw 'Unexpected ZIP contents'
     }
+    $reader = [IO.StreamReader]::new($zip.GetEntry('dependencies.json').Open())
+    try { $dependencies = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
+    if ($dependencies.runtime_dependencies[0].minimum_release -gt 15) {
+        throw 'Legacy deployment script is pinned to BSL v15. Use the mod manager or a deployment validated for your current BSL v18+ installation.'
+    }
 } finally { $zip.Dispose() }
 
 $patchName = '9ba626afa44a3aa3.patch_4'
@@ -112,7 +117,7 @@ foreach ($suffix in @('.stream', '.gpu_resources', '')) {
     $installedFiles += [pscustomobject]@{name=($patchName + $suffix); sha256=(Get-Sha ($source + $suffix)); source=($source + $suffix)}
 }
 $recordPath = Join-Path $work 'deployment.json'
-$record = [ordered]@{status='prepared'; timeUtc=[DateTime]::UtcNow.ToString('o'); version='ehp-1.1.2-ui4-bsl15';
+$record = [ordered]@{status='prepared'; timeUtc=[DateTime]::UtcNow.ToString('o'); version='ehp-1.1.2-ui6-part-bars-bsl15';
     gameRoot=$GameRoot; dataDir=$dataDir; gameBuild='25480438'; loader='BSL v15 (unchanged)';
     managerRegistered=$false; zipSha256=(Get-Sha $ArchivePath); originalFiles=$originalFiles; installedFiles=$installedFiles}
 $record | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $recordPath -Encoding UTF8

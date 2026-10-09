@@ -16,7 +16,7 @@ return function(make)
     local pointers={[game+0x3326688]=hm,[game+0x347CEF0]=user,[hm+0x1048]=descriptors,[hm+0x1058]=records}
     local memory={[user+0xB398]=pack(0x76543210)..pack(0xFEDCBA98),[hm+0x1020]=pack(1),
         [descriptors]=pack(d)..pack(0),
-        [records]=bytes(0x1B8,{[0x14]=pack(75),[0x38]=pack(0x76543210)..pack(0xFEDCBA98),[0x19C]=pack(0)}),
+        [records]=bytes(0x1B8,{[0x14]=pack(75),[0x38]=pack(0x76543210)..pack(0xFEDCBA98),[0x19C]=pack(0),[0xF8]=pack(300),[0xFC]=pack(0xFFFFFFFF),[0x18C]=pack(77)}),
         [d]=pack(0x12345678)..pack(0xABCDEF12)..pack(453)..pack(12662)..pack(99)..pack(0)}
     local blocks=0
     local function read(a,n) local s=memory[a];return s and #s==n and s or nil end
@@ -26,6 +26,7 @@ return function(make)
     assert(blocks==2 and peer=="FEDCBA9876543210")
     assert(r.entity==453 and r.type=="ABCDEF1212345678" and r.descriptor==d and r.network==99)
     assert(r.hp==75 and r.life==0 and r.creditor==peer)
+    assert(#r.parts==38 and r.parts[1]==300 and r.parts[2]==-1 and r.parts[38]==77, "read 38 signed part pools at exact offsets")
     memory[records]=bytes(0x1B8,{[0x14]=pack(0xFFFFFFFF),[0x19C]=pack(2)})
     snapshot=reader();assert(snapshot.records[12662].hp==-1 and snapshot.records[12662].life==2)
     memory[hm+0x1020]=pack(2049);blocks=0
@@ -41,5 +42,5 @@ return function(make)
     assert(not unstable(), "changed manager arrays must discard snapshot")
     pointers[hm+0x1058]=records;memory[user+0xB398]=string.rep("\0",8)
     assert(not reader(), "unknown local peer must disable attribution")
-    return "PASS: byte-layout adapter, signed HP/life, 64-bit peer, two bounded bulk reads, invalid count/partial reads/manager race and unknown peer"
+    return "PASS: byte-layout adapter, 38 signed part pools and adjacent boundaries, signed HP/life, 64-bit peer, two bounded bulk reads, invalid count/partial reads/manager race and unknown peer"
 end
